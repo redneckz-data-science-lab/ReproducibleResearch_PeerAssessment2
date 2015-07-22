@@ -1,0 +1,40 @@
+---
+title: 'Reproducible Research: Peer Assessment 2'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+
+# Title that briefly summarizes data analysis
+
+## Synopsis
+
+Questions:
+
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
+
+## Data Processing
+
+[Storm Data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) [47Mb]
+
+Loading and preprocessing the data:
+
+```{r}
+# Trying to load dependencies
+library(data.table)
+library(ggplot2)
+```
+
+```{r}
+
+```
+
+## Results
+
+
+
+
