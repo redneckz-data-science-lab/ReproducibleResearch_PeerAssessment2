@@ -1,6 +1,6 @@
 # Reproducible Research: Peer Assessment 2
 
-# Title that briefly summarizes data analysis
+# Tornadoes and flooding are the most harmful events in the US
 
 # Synopsis
 
@@ -10,7 +10,10 @@ The [Storm Data](http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData
 
 2. Across the United States, which types of events have the greatest economic consequences?
 
-After some exploratory analisys it was found
+First of all the data has been cleaned. Values of the *event type* variable have been *adjusted*.
+Then data has been *aggregated* by health related variables (fatalities, injuries) and economics related variables (property damage, crop damage).
+Then *sorted* and *truncated*.
+At the end the appropriate plots have been constructed to show the impact on health and economics respectively (in the form of a rating).
 
 # Data Processing
 
@@ -135,14 +138,17 @@ invisible({
     # Replacing different variants of separators by / symbol
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s*(/|\\\\|&|;)\\s*", "/")]
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s+AND\\s+", "/")]
-    # Question marks should be replaced with NONE
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "?", "NONE")]
-    # Removing some semantic duplicates
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "(WINTRY|WINTERY)", "WINTER")]
     # Moving unnecessary event types to OTHER category
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, ".*(SUMMARY).*", "OTHER")]
     # Replacing sequences of white space symbols by only one space symbol
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s+", " ")]
+    # Removing some semantic duplicates or very close categories
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "?", "NONE")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "(WINTRY|WINTERY)", "WINTER")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s+", "THUNDERSTORM ")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "FLASH FLOOD", "FLOOD")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "EXCESSIVE HEAT", "HEAT")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "THUNDERSTORM WINDS", "THUNDERSTORM WIND")]
 })
 ```
 
@@ -154,7 +160,7 @@ original.event.type.count - length(levels(factor(storm.data$EVTYPE)))
 ```
 
 ```
-## [1] 213
+## [1] 235
 ```
 
 Computing the *total number of deaths* per event type:
@@ -238,7 +244,7 @@ invisible({
 ggplot(health.impacts.by.type.top, aes(EVTYPE, FATALITIES, fill = EVTYPE)) +
     geom_bar(position = "dodge", stat = "identity") +
     labs(title = "Fatalities by Event Type", x = "", y = "") +
-    theme(axis.text.x = element_text(angle = 10))
+    theme(axis.text.x = element_text(angle = 20))
 ```
 
 ![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-14-1.png) 
@@ -248,10 +254,12 @@ ggplot(health.impacts.by.type.top, aes(EVTYPE, FATALITIES, fill = EVTYPE)) +
 ggplot(health.impacts.by.type.top, aes(EVTYPE, INJURIES, fill = EVTYPE)) +
     geom_bar(position = "dodge", stat = "identity") +
     labs(title = "Injuries by Event Type", x = "", y = "") +
-    theme(axis.text.x = element_text(angle = 10))
+    theme(axis.text.x = element_text(angle = 20))
 ```
 
 ![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-15-1.png) 
+
+Thus *tornadoes* and *flooding* are the most awful events with respect to *population health*. In the second place there is the *heat* category. And this is strange thing. I have no explanation for such case.
 
 
 ```r
@@ -260,7 +268,9 @@ ggplot(economic.impacts.melted, aes(EVTYPE, value, fill=EVTYPE, colour=variable)
     geom_bar(stat = "identity") +
     labs(title = "Economic Impacts by Event Type", x = "",
          y = "Damage in U.S dollars") +
-    theme(axis.text.x = element_text(angle = 10))
+    theme(axis.text.x = element_text(angle = 20))
 ```
 
 ![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-16-1.png) 
+
+And once aganin *tornadoes* and *flooding* are the most harmful with respect to *economics*. In the second place *thunderstorm wind*. Other categories have significantly lower rates.
