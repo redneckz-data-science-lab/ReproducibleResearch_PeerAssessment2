@@ -9,3 +9,5 @@
 
 # RStudio files
 .Rproj.user/
+RepData_PeerAssessment2_cache/
+rsconnect/
