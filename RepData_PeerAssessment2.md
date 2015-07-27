@@ -95,56 +95,29 @@ So the variables of interest are:
 
 4. *PROPDMG* - Property damage estimation (in U.S. dollars). Relates to the economic consequences question.
 
-5. *PROPDMGEXP* - Property damage multiplier. Possible values are:
+5. *PROPDMGEXP* - Property damage magnitude. Possible values are:
 
 
 ```r
-DAMAGE.MULTIPLIERS <- data.table(
-    "sign" = c("", "+", "-", "?", "h", "H", "k", "K", "m", "M", "b", "B"),
-    "mul" = c(10^0, 10^1, 10^1, 10^1, 10^2, 10^2, 10^3, 10^3, 10^6, 10^6, 10^9, 10^9)
-)
-print(DAMAGE.MULTIPLIERS)
+print(levels(factor(storm.data$PROPDMGEXP)))
 ```
 
 ```
-##     sign   mul
-##  1:      1e+00
-##  2:    + 1e+01
-##  3:    - 1e+01
-##  4:    ? 1e+01
-##  5:    h 1e+02
-##  6:    H 1e+02
-##  7:    k 1e+03
-##  8:    K 1e+03
-##  9:    m 1e+06
-## 10:    M 1e+06
-## 11:    b 1e+09
-## 12:    B 1e+09
+##  [1] ""  "-" "?" "+" "0" "1" "2" "3" "4" "5" "6" "7" "8" "B" "h" "H" "K"
+## [18] "m" "M"
 ```
 
 6. *CROPDMG* - Crop damage estimation (in U.S. dollars). Relates to the economic consequences question.
 
-7. *CROPDMGEXP* - Crop damage multiplier. Possible values are:
+7. *CROPDMGEXP* - Crop damage magnitude. Possible values are:
 
 
 ```r
-print(DAMAGE.MULTIPLIERS)
+print(levels(factor(storm.data$CROPDMGEXP)))
 ```
 
 ```
-##     sign   mul
-##  1:      1e+00
-##  2:    + 1e+01
-##  3:    - 1e+01
-##  4:    ? 1e+01
-##  5:    h 1e+02
-##  6:    H 1e+02
-##  7:    k 1e+03
-##  8:    K 1e+03
-##  9:    m 1e+06
-## 10:    M 1e+06
-## 11:    b 1e+09
-## 12:    B 1e+09
+## [1] ""  "?" "0" "2" "B" "k" "K" "m" "M"
 ```
 
 Are there any empty values?
@@ -243,26 +216,31 @@ Seem to be event type variable is not clean enough to be used as classifier. The
 
 ```r
 invisible({
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "[\\(\\)\\d]", "")]
     storm.data[, EVTYPE := stri_trim_both(EVTYPE)]
     storm.data[, EVTYPE := stri_trans_toupper(EVTYPE)]
     # Removing trailing separator symbols
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "[/\\-\\.;]+$", "")]
     # Replacing different variants of separators by / symbol
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s*(/|\\\\|&|;)\\s*", "/")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s*(/|\\\\|&|;|-)\\s*", "/")]
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s+AND\\s+", "/")]
-    # Moving unnecessary event types to OTHER category
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, ".*(SUMMARY).*", "OTHER")]
     # Replacing sequences of white space symbols by only one space symbol
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s+", " ")]
+    # Moving unnecessary event types to OTHER category
+    storm.data[stri_detect_fixed(EVTYPE, "SUMMARY"), EVTYPE := "OTHER"]
     # Removing some semantic duplicates or very close categories
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "?", "NONE")]
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "(WINTRY|WINTERY)", "WINTER")]
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s", "THUNDERSTORM ")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "^FLOOD\\s.*", "FLOOD")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, ".*\\sFLOOD$", "FLOOD")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "^HEAT\\s.*", "HEAT")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, ".*\\sHEAT$", "HEAT")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "THUNDERSTORM WINDS", "THUNDERSTORM WIND")]
+    storm.data[EVTYPE %in% c("?", ""), EVTYPE := "NONE"]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "FLOODING", "FLOOD")]
+    storm.data[stri_startswith_fixed(EVTYPE, "FLOOD "), EVTYPE :="FLOOD"]
+    storm.data[stri_endswith_fixed(EVTYPE, " FLOOD"), EVTYPE :="FLOOD"]
+    storm.data[stri_startswith_fixed(EVTYPE, "HEAT "), EVTYPE :="HEAT"]
+    storm.data[stri_endswith_fixed(EVTYPE, " HEAT"), EVTYPE :="HEAT"]
+    storm.data[stri_detect_fixed(EVTYPE, "TSTM"), EVTYPE := "THUNDERSTORM"]
+    storm.data[stri_detect_fixed(EVTYPE, "THUNDERSTORM"), EVTYPE := "THUNDERSTORM"]
+    storm.data[stri_detect_fixed(EVTYPE, "BLIZZARD"), EVTYPE := "BLIZZARD"]
+    storm.data[stri_detect_fixed(EVTYPE, "HURRICANE"), EVTYPE := "HURRICANE"]
+    storm.data[stri_detect_fixed(EVTYPE, "TORNADO"), EVTYPE := "TORNADO"]
+    storm.data[stri_detect_fixed(EVTYPE, "TORNDAO"), EVTYPE := "TORNADO"]
 })
 ```
 
@@ -274,7 +252,30 @@ original.event.type.count - length(levels(factor(storm.data$EVTYPE)))
 ```
 
 ```
-## [1] 226
+## [1] 450
+```
+
+## Converting PROPDMGEXP and CROPDMGEXP variables to integers
+
+
+```r
+invisible({
+    storm.data[PROPDMGEXP == "", PROPDMGEXP := "0"]
+    storm.data[PROPDMGEXP %in% c("+", "-", "?"), PROPDMGEXP := "1"]
+    storm.data[PROPDMGEXP %in% c("h", "H"), PROPDMGEXP := "2"]
+    storm.data[PROPDMGEXP %in% c("k", "K"), PROPDMGEXP := "3"]
+    storm.data[PROPDMGEXP %in% c("m", "M"), PROPDMGEXP := "6"]
+    storm.data[PROPDMGEXP %in% c("b", "B"), PROPDMGEXP := "9"]
+    storm.data[, PROPDMGEXP := as.integer(PROPDMGEXP)]
+    
+    storm.data[CROPDMGEXP == "", CROPDMGEXP := "0"]
+    storm.data[CROPDMGEXP %in% c("+", "-", "?"), CROPDMGEXP := "1"]
+    storm.data[CROPDMGEXP %in% c("h", "H"), CROPDMGEXP := "2"]
+    storm.data[CROPDMGEXP %in% c("k", "K"), CROPDMGEXP := "3"]
+    storm.data[CROPDMGEXP %in% c("m", "M"), CROPDMGEXP := "6"]
+    storm.data[CROPDMGEXP %in% c("b", "B"), CROPDMGEXP := "9"]
+    storm.data[, CROPDMGEXP := as.integer(CROPDMGEXP)]
+})
 ```
 
 ## Aggregating health related data
@@ -318,22 +319,12 @@ invisible({
 
 ## Aggregating economics related data
 
-
-```r
-Compute.Damage <- function (damage, damage.exp) {
-    is.numeric.exp <- stri_detect_regex(damage.exp, "\\d+")
-    mul <- ifelse(is.numeric.exp,
-                  10^as.integer(damage.exp),
-                  DAMAGE.MULTIPLIERS[sign %in% damage.exp]$mul)
-    return(damage * mul)
-}
-```
-
 Computing the *total property damage* per event type:
 
 
 ```r
-property.damage.by.type <- storm.data[, sum(Compute.Damage(PROPDMG, PROPDMGEXP)), by = EVTYPE]
+property.damage.by.type <- storm.data[, sum(PROPDMG * 10^PROPDMGEXP),
+                                      by = EVTYPE]
 invisible({
     property.damage.by.type[, PROPDMG := V1]
     property.damage.by.type[, V1 := NULL]
@@ -344,7 +335,8 @@ Computing the *total crop damage* per event type:
 
 
 ```r
-crop.damage.by.type <- storm.data[, sum(Compute.Damage(CROPDMG, CROPDMGEXP)), by = EVTYPE]
+crop.damage.by.type <- storm.data[, sum(CROPDMG * 10^CROPDMGEXP),
+                                  by = EVTYPE]
 invisible({
     crop.damage.by.type[, CROPDMG := V1]
     crop.damage.by.type[, V1 := NULL]
