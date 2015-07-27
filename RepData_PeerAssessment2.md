@@ -1,6 +1,6 @@
 # Reproducible Research: Peer Assessment 2
 
-# Tornadoes and flooding are the most harmful events in the US
+# Tornadoes and flooding are the most harmful events in the U.S.
 
 # Synopsis
 
@@ -14,6 +14,7 @@ First of all the data has been cleaned. Values of the *event type* variable have
 Then data has been *aggregated* by health related variables (fatalities, injuries) and economics related variables (property damage, crop damage).
 Then *sorted* and *truncated*.
 At the end the appropriate plots have been constructed to show the impact on health and economics respectively (in the form of a rating).
+The data is not clean enough but its evident from the plots that *tornados* and *flooding* are the most harmful events.
 
 # Data Processing
 
@@ -380,7 +381,7 @@ ggplot(health.impacts.by.type.top, aes(EVTYPE, INJURIES, fill = EVTYPE)) +
 
 ![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-19-1.png) 
 
-Thus *tornadoes* and *flooding* are the most awful events with respect to *population health*. In the second place there is the *heat* category. And this is strange thing. I have no explanation for such case.
+Thus *tornadoes* is the most awful events with respect to *population health*. In the second place there is the *heat* category. And this is strange thing. I have no explanation for such case.
 
 
 ```r
@@ -394,4 +395,4 @@ ggplot(economic.impacts.melted, aes(EVTYPE, value, fill=EVTYPE, colour=variable)
 
 ![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-20-1.png) 
 
-And once aganin *tornadoes* and *flooding* are the most harmful with respect to *economics*. In the second place *thunderstorm wind*. Other categories have significantly lower rates.
+*Flooding* is the most harmful event with respect to *economics*. Then *hurricanes* and *storms*. Other categories have significantly lower rates.
