@@ -56,7 +56,23 @@ So the variables of interest are:
 
 4. *PROPDMG* - Property damage estimation (in U.S. dollars). Relates to the economic consequences question.
 
-5. *CROPDMG* - Crop damage estimation (in U.S. dollars). Relates to the economic consequences question.
+5. *PROPDMGEXP* - Property damage multiplier. Possible values are:
+
+```{r}
+DAMAGE.MULTIPLIERS <- data.table(
+    "sign" = c("", "+", "-", "?", "h", "H", "k", "K", "m", "M", "b", "B"),
+    "mul" = c(10^0, 10^1, 10^1, 10^1, 10^2, 10^2, 10^3, 10^3, 10^6, 10^6, 10^9, 10^9)
+)
+print(DAMAGE.MULTIPLIERS)
+```
+
+6. *CROPDMG* - Crop damage estimation (in U.S. dollars). Relates to the economic consequences question.
+
+7. *CROPDMGEXP* - Crop damage multiplier. Possible values are:
+
+```{r}
+print(DAMAGE.MULTIPLIERS)
+```
 
 Are there any empty values?
 
@@ -65,8 +81,12 @@ ifelse(any(is.na(storm.data$EVTYPE),
            is.na(storm.data$FATALITIES),
            is.na(storm.data$INJURIES),
            is.na(storm.data$PROPDMG),
-           is.na(storm.data$CROPDMG)), "YES", "NO")
+           is.na(storm.data$PROPDMGEXP),
+           is.na(storm.data$CROPDMG),
+           is.na(storm.data$CROPDMGEXP)), "YES", "NO")
 ```
+
+## Cleaning event type variable
 
 How many different types of events exist?
 
@@ -75,9 +95,13 @@ original.event.type.count <- length(levels(factor(storm.data$EVTYPE)))
 print(original.event.type.count)
 ```
 
-Seem to be event type variable is not clean enough to be used as classifier. There are a lot of typos, semantic duplicates, and mixed values.
+Some of them:
 
-## Cleaning event type variable
+```{r}
+head(levels(factor(storm.data$EVTYPE)), 100)
+```
+
+Seem to be event type variable is not clean enough to be used as classifier. There are a lot of typos, semantic duplicates, and mixed values.
 
 ```{r}
 invisible({
@@ -94,10 +118,13 @@ invisible({
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "\\s+", " ")]
     # Removing some semantic duplicates or very close categories
     storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "?", "NONE")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "", "NONE")]
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "(WINTRY|WINTERY)", "WINTER")]
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s+", "THUNDERSTORM ")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "FLASH FLOOD", "FLOOD")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "EXCESSIVE HEAT", "HEAT")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s", "THUNDERSTORM ")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^FLOOD\\s.*", "FLOOD")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, ".*\\sFLOOD$", "FLOOD")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^HEAT\\s.*", "HEAT")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, ".*\\sHEAT$", "HEAT")]
     storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "THUNDERSTORM WINDS", "THUNDERSTORM WIND")]
 })
 ```
@@ -107,6 +134,8 @@ How many event types was rejected during cleaning stage?
 ```{r}
 original.event.type.count - length(levels(factor(storm.data$EVTYPE)))
 ```
+
+## Aggregating health related data
 
 Computing the *total number of deaths* per event type:
 
@@ -143,10 +172,22 @@ invisible({
 })
 ```
 
+## Aggregating economics related data
+
+```{r}
+Compute.Damage <- function (damage, damage.exp) {
+    is.numeric.exp <- stri_detect_regex(damage.exp, "\\d+")
+    mul <- ifelse(is.numeric.exp,
+                  10^as.integer(damage.exp),
+                  DAMAGE.MULTIPLIERS[sign %in% damage.exp]$mul)
+    return(damage * mul)
+}
+```
+
 Computing the *total property damage* per event type:
 
 ```{r}
-property.damage.by.type <- storm.data[, sum(PROPDMG), by = EVTYPE]
+property.damage.by.type <- storm.data[, sum(Compute.Damage(PROPDMG, PROPDMGEXP)), by = EVTYPE]
 invisible({
     property.damage.by.type[, PROPDMG := V1]
     property.damage.by.type[, V1 := NULL]
@@ -156,7 +197,7 @@ invisible({
 Computing the *total crop damage* per event type:
 
 ```{r}
-crop.damage.by.type <- storm.data[, sum(CROPDMG), by = EVTYPE]
+crop.damage.by.type <- storm.data[, sum(Compute.Damage(CROPDMG, CROPDMGEXP)), by = EVTYPE]
 invisible({
     crop.damage.by.type[, CROPDMG := V1]
     crop.damage.by.type[, V1 := NULL]

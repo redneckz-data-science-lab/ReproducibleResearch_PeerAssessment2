@@ -95,7 +95,57 @@ So the variables of interest are:
 
 4. *PROPDMG* - Property damage estimation (in U.S. dollars). Relates to the economic consequences question.
 
-5. *CROPDMG* - Crop damage estimation (in U.S. dollars). Relates to the economic consequences question.
+5. *PROPDMGEXP* - Property damage multiplier. Possible values are:
+
+
+```r
+DAMAGE.MULTIPLIERS <- data.table(
+    "sign" = c("", "+", "-", "?", "h", "H", "k", "K", "m", "M", "b", "B"),
+    "mul" = c(10^0, 10^1, 10^1, 10^1, 10^2, 10^2, 10^3, 10^3, 10^6, 10^6, 10^9, 10^9)
+)
+print(DAMAGE.MULTIPLIERS)
+```
+
+```
+##     sign   mul
+##  1:      1e+00
+##  2:    + 1e+01
+##  3:    - 1e+01
+##  4:    ? 1e+01
+##  5:    h 1e+02
+##  6:    H 1e+02
+##  7:    k 1e+03
+##  8:    K 1e+03
+##  9:    m 1e+06
+## 10:    M 1e+06
+## 11:    b 1e+09
+## 12:    B 1e+09
+```
+
+6. *CROPDMG* - Crop damage estimation (in U.S. dollars). Relates to the economic consequences question.
+
+7. *CROPDMGEXP* - Crop damage multiplier. Possible values are:
+
+
+```r
+print(DAMAGE.MULTIPLIERS)
+```
+
+```
+##     sign   mul
+##  1:      1e+00
+##  2:    + 1e+01
+##  3:    - 1e+01
+##  4:    ? 1e+01
+##  5:    h 1e+02
+##  6:    H 1e+02
+##  7:    k 1e+03
+##  8:    K 1e+03
+##  9:    m 1e+06
+## 10:    M 1e+06
+## 11:    b 1e+09
+## 12:    B 1e+09
+```
 
 Are there any empty values?
 
@@ -105,12 +155,16 @@ ifelse(any(is.na(storm.data$EVTYPE),
            is.na(storm.data$FATALITIES),
            is.na(storm.data$INJURIES),
            is.na(storm.data$PROPDMG),
-           is.na(storm.data$CROPDMG)), "YES", "NO")
+           is.na(storm.data$PROPDMGEXP),
+           is.na(storm.data$CROPDMG),
+           is.na(storm.data$CROPDMGEXP)), "YES", "NO")
 ```
 
 ```
 ## [1] "NO"
 ```
+
+## Cleaning event type variable
 
 How many different types of events exist?
 
@@ -124,9 +178,67 @@ print(original.event.type.count)
 ## [1] 985
 ```
 
-Seem to be event type variable is not clean enough to be used as classifier. There are a lot of typos, semantic duplicates, and mixed values.
+Some of them:
 
-## Cleaning event type variable
+
+```r
+head(levels(factor(storm.data$EVTYPE)), 100)
+```
+
+```
+##   [1] "   HIGH SURF ADVISORY"          " COASTAL FLOOD"                
+##   [3] " FLASH FLOOD"                   " LIGHTNING"                    
+##   [5] " TSTM WIND"                     " TSTM WIND (G45)"              
+##   [7] " WATERSPOUT"                    " WIND"                         
+##   [9] "?"                              "ABNORMAL WARMTH"               
+##  [11] "ABNORMALLY DRY"                 "ABNORMALLY WET"                
+##  [13] "ACCUMULATED SNOWFALL"           "AGRICULTURAL FREEZE"           
+##  [15] "APACHE COUNTY"                  "ASTRONOMICAL HIGH TIDE"        
+##  [17] "ASTRONOMICAL LOW TIDE"          "AVALANCE"                      
+##  [19] "AVALANCHE"                      "BEACH EROSIN"                  
+##  [21] "Beach Erosion"                  "BEACH EROSION"                 
+##  [23] "BEACH EROSION/COASTAL FLOOD"    "BEACH FLOOD"                   
+##  [25] "BELOW NORMAL PRECIPITATION"     "BITTER WIND CHILL"             
+##  [27] "BITTER WIND CHILL TEMPERATURES" "Black Ice"                     
+##  [29] "BLACK ICE"                      "BLIZZARD"                      
+##  [31] "BLIZZARD AND EXTREME WIND CHIL" "BLIZZARD AND HEAVY SNOW"       
+##  [33] "Blizzard Summary"               "BLIZZARD WEATHER"              
+##  [35] "BLIZZARD/FREEZING RAIN"         "BLIZZARD/HEAVY SNOW"           
+##  [37] "BLIZZARD/HIGH WIND"             "BLIZZARD/WINTER STORM"         
+##  [39] "BLOW-OUT TIDE"                  "BLOW-OUT TIDES"                
+##  [41] "BLOWING DUST"                   "blowing snow"                  
+##  [43] "Blowing Snow"                   "BLOWING SNOW"                  
+##  [45] "BLOWING SNOW- EXTREME WIND CHI" "BLOWING SNOW & EXTREME WIND CH"
+##  [47] "BLOWING SNOW/EXTREME WIND CHIL" "BREAKUP FLOODING"              
+##  [49] "BRUSH FIRE"                     "BRUSH FIRES"                   
+##  [51] "COASTAL  FLOODING/EROSION"      "COASTAL EROSION"               
+##  [53] "Coastal Flood"                  "COASTAL FLOOD"                 
+##  [55] "coastal flooding"               "Coastal Flooding"              
+##  [57] "COASTAL FLOODING"               "COASTAL FLOODING/EROSION"      
+##  [59] "Coastal Storm"                  "COASTAL STORM"                 
+##  [61] "COASTAL SURGE"                  "COASTAL/TIDAL FLOOD"           
+##  [63] "COASTALFLOOD"                   "COASTALSTORM"                  
+##  [65] "Cold"                           "COLD"                          
+##  [67] "COLD AIR FUNNEL"                "COLD AIR FUNNELS"              
+##  [69] "COLD AIR TORNADO"               "Cold and Frost"                
+##  [71] "COLD AND FROST"                 "COLD AND SNOW"                 
+##  [73] "COLD AND WET CONDITIONS"        "Cold Temperature"              
+##  [75] "COLD TEMPERATURES"              "COLD WAVE"                     
+##  [77] "COLD WEATHER"                   "COLD WIND CHILL TEMPERATURES"  
+##  [79] "COLD/WIND CHILL"                "COLD/WINDS"                    
+##  [81] "COOL AND WET"                   "COOL SPELL"                    
+##  [83] "CSTL FLOODING/EROSION"          "DAM BREAK"                     
+##  [85] "DAM FAILURE"                    "Damaging Freeze"               
+##  [87] "DAMAGING FREEZE"                "DEEP HAIL"                     
+##  [89] "DENSE FOG"                      "DENSE SMOKE"                   
+##  [91] "DOWNBURST"                      "DOWNBURST WINDS"               
+##  [93] "DRIEST MONTH"                   "Drifting Snow"                 
+##  [95] "DROUGHT"                        "DROUGHT/EXCESSIVE HEAT"        
+##  [97] "DROWNING"                       "DRY"                           
+##  [99] "DRY CONDITIONS"                 "DRY HOT WEATHER"
+```
+
+Seem to be event type variable is not clean enough to be used as classifier. There are a lot of typos, semantic duplicates, and mixed values.
 
 
 ```r
@@ -145,9 +257,11 @@ invisible({
     # Removing some semantic duplicates or very close categories
     storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "?", "NONE")]
     storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "(WINTRY|WINTERY)", "WINTER")]
-    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s+", "THUNDERSTORM ")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "FLASH FLOOD", "FLOOD")]
-    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "EXCESSIVE HEAT", "HEAT")]
+    storm.data[, EVTYPE := stri_replace_all_regex(EVTYPE, "^TSTM\\s", "THUNDERSTORM ")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "^FLOOD\\s.*", "FLOOD")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, ".*\\sFLOOD$", "FLOOD")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "^HEAT\\s.*", "HEAT")]
+    storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, ".*\\sHEAT$", "HEAT")]
     storm.data[, EVTYPE := stri_replace_all_fixed(EVTYPE, "THUNDERSTORM WINDS", "THUNDERSTORM WIND")]
 })
 ```
@@ -160,8 +274,10 @@ original.event.type.count - length(levels(factor(storm.data$EVTYPE)))
 ```
 
 ```
-## [1] 235
+## [1] 226
 ```
+
+## Aggregating health related data
 
 Computing the *total number of deaths* per event type:
 
@@ -200,11 +316,24 @@ invisible({
 })
 ```
 
+## Aggregating economics related data
+
+
+```r
+Compute.Damage <- function (damage, damage.exp) {
+    is.numeric.exp <- stri_detect_regex(damage.exp, "\\d+")
+    mul <- ifelse(is.numeric.exp,
+                  10^as.integer(damage.exp),
+                  DAMAGE.MULTIPLIERS[sign %in% damage.exp]$mul)
+    return(damage * mul)
+}
+```
+
 Computing the *total property damage* per event type:
 
 
 ```r
-property.damage.by.type <- storm.data[, sum(PROPDMG), by = EVTYPE]
+property.damage.by.type <- storm.data[, sum(Compute.Damage(PROPDMG, PROPDMGEXP)), by = EVTYPE]
 invisible({
     property.damage.by.type[, PROPDMG := V1]
     property.damage.by.type[, V1 := NULL]
@@ -215,7 +344,7 @@ Computing the *total crop damage* per event type:
 
 
 ```r
-crop.damage.by.type <- storm.data[, sum(CROPDMG), by = EVTYPE]
+crop.damage.by.type <- storm.data[, sum(Compute.Damage(CROPDMG, CROPDMGEXP)), by = EVTYPE]
 invisible({
     crop.damage.by.type[, CROPDMG := V1]
     crop.damage.by.type[, V1 := NULL]
@@ -247,7 +376,7 @@ ggplot(health.impacts.by.type.top, aes(EVTYPE, FATALITIES, fill = EVTYPE)) +
     theme(axis.text.x = element_text(angle = 20))
 ```
 
-![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-14-1.png) 
+![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-18-1.png) 
 
 
 ```r
@@ -257,7 +386,7 @@ ggplot(health.impacts.by.type.top, aes(EVTYPE, INJURIES, fill = EVTYPE)) +
     theme(axis.text.x = element_text(angle = 20))
 ```
 
-![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-15-1.png) 
+![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-19-1.png) 
 
 Thus *tornadoes* and *flooding* are the most awful events with respect to *population health*. In the second place there is the *heat* category. And this is strange thing. I have no explanation for such case.
 
@@ -271,6 +400,6 @@ ggplot(economic.impacts.melted, aes(EVTYPE, value, fill=EVTYPE, colour=variable)
     theme(axis.text.x = element_text(angle = 20))
 ```
 
-![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-16-1.png) 
+![](RepData_PeerAssessment2_files/figure-html/unnamed-chunk-20-1.png) 
 
 And once aganin *tornadoes* and *flooding* are the most harmful with respect to *economics*. In the second place *thunderstorm wind*. Other categories have significantly lower rates.
